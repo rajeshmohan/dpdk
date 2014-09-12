@@ -1,0 +1,163 @@
+sudo apt-get install make gcc build-essential linux-headers-$(uname -r)
+
+sudo modprobe uio
+sudo insmod kmod/igb_uio.ko
+
+
+echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+mkdir /mnt/huge
+mount -t hugetlbfs nodev /mnt/huge
+
+
+Centos Firewall disable:
+    service iptables stop
+    chkconfig iptables off
+
+Ispci -v
+Ispci -v 
+
+Use lspci -nn and look for the definition of the network card:
+
+02:00.0 Network controller  [0280]: Intel Corporation Centrino Advanced-N 6205 [8086:0082] (rev 34)
+
+
+You now need to shut down the guest OS and edit the guest XML definition, using virsh edit. In the <devices> section that you'll find in the guest XML code, make sure the PCI device is defined. The example in Listing 2 shows how the definition should look. The important line is the line where the domain, bus, slot and function are defined to match the PCI ID (02:00.0) that you found using the lspci -vv command:
+
+<address domain='0x0000' bus='0x02' slot='0x00' function='0x0'/>
+
+Pasted from <http://searchservervirtualization.techtarget.com/tip/VirtIO-PCI-pass-through-offer-better-KVM-network-performance> 
+
+
+
+echo 1024 > /sys/kernel/mm/hugepages/hugepages-2048kB/nr_hugepages
+mount -t hugetlbfs nodev /mnt/huge
+
+
+modprobe uio
+insmod ./x86_64-default-linuxapp-gcc/kmod/igb_uio.ko
+./tools/pci_unbind.py --status
+./tools/pci_unbind.py --bind=igb_uio eth2
+./tools/pci_unbind.py --bind=igb_uio eth3
+./tools/pci_unbind.py --status
+./x86_64-default-linuxapp-gcc/app/testpmd -c 0xff -n 1 -- -i --rxq=1 --txq=1 --rxd=512 --txd=512
+
+
+./tools/pci_unbind.py --bind=e1000 0000:02:03.0
+./tools/pci_unbind.py --bind=e1000 0000:02:02.0
+
+modprobe uio
+rmmod vmxnet3
+rmmod vmxnet3-usermap
+insmod ./vmxnet3-usermap.ko enable_shm=2,2 num_rqs=1,1 num_tqs=1,1 num_rxds=512 num_txds=512
+gdb ../dpdk-1.5.0r1/x86_64-default-linuxapp-gcc/app/testpmd
+../dpdk-1.5.0r1/x86_64-default-linuxapp-gcc/app/testpmd -c 0xff -n 1 -d librte_pmd_vmxnet3.so -- -i --rxq=1 --txq=1 --rxd=512 --txd=512
+
+
+#passthrough
+modprobe uio
+insmod ./x86_64-default-linuxapp-gcc/kmod/igb_uio.ko
+./tools/pci_unbind.py --status
+./tools/pci_unbind.py --bind=igb_uio eth6
+./tools/pci_unbind.py --bind=igb_uio eth7
+./tools/pci_unbind.py --status
+./x86_64-default-linuxapp-gcc/app/testpmd -c 0xff -n 1 -- -i --rxq=1 --txq=1 --rxd=512 --txd=512
+
+gdb ../dpdk-1.5.0r1/x86_64-default-linuxapp-gcc/app/testpmd
+b port_infos_display
+set args -c 0xff -n 1  -- -i  --nb-cores=4 --rxq=1 --txq=1 --rxd=512 --txd=512 
+
+#For rss
+b ixgbe_dev_rx_init
+b port_infos_display
+set args -c 0xff -n 1  -- -i  --nb-cores=4 --rss-udp   --rxq=4 --txq=4 --rxd=512 --txd=512 
+
+./tools/pci_unbind.py --status
+./tools/pci_unbind.py --bind=ixgbe 0000:03:00.0
+./tools/pci_unbind.py --bind=ixgbe 0000:03:00.1
+./tools/pci_unbind.py --status
+rmmod igb_uio
+insmod ./x86_64-default-linuxapp-gcc/kmod/igb_uio.ko
+./tools/pci_unbind.py --status
+./tools/pci_unbind.py --bind=igb_uio 0000:03:00.0
+./tools/pci_unbind.py --bind=igb_uio 0000:03:00.1
+./tools/pci_unbind.py --status
+
+
+GDB
+============================================
+
+insmod ./vmxnet3-usermap.ko enable_shm=2,2 num_rqs=1,1 num_tqs=1,1 num_rxds=512 num_txds=512
+b port_infos_display
+set args -c 0xff -n 1 -d librte_pmd_vmxnet3.so -- -i --rxq=1 --txq=1 --rxd=512 --txd=512
+
+set $mcfg=(struct rte_mem_config *)rte_config.mem_config
+
+#pass-through
+set args -c 0xff -n 1 -- -i --rxq=1 --txq=1 --rxd=512 --txd=512 --nb-cores=4
+
+
+
+Compile
+==============================================
+
+make config T=x86_64-default-linuxapp-gcc
+
+
+
+Testing
+================================================
+
+testpmd> show port info all
+
+********************* Infos for port 0  *********************
+MAC address: 00:0C:29:AA:60:F7
+Connect to socket: -1
+memory allocation on the socket: 0
+Link status: up
+Link speed: 1000 Mbps
+Link duplex: full-duplex
+Promiscuous mode: enabled
+Allmulticast mode: disabled
+Maximum number of MAC addresses: 15
+Maximum number of MAC addresses of hash filtering: 0
+VLAN offload: 
+  strip on 
+  filter on 
+  qinq(extend) off 
+
+********************* Infos for port 1  *********************
+MAC address: 00:0C:29:AA:60:15
+Connect to socket: -1
+memory allocation on the socket: 0
+Link status: up
+Link speed: 1000 Mbps
+Link duplex: full-duplex
+Promiscuous mode: enabled
+Allmulticast mode: disabled
+Maximum number of MAC addresses: 15
+Maximum number of MAC addresses of hash filtering: 0
+VLAN offload: 
+  strip on 
+  filter on 
+  qinq(extend) off 
+testpmd> 
+
+Mailing list:
+=======================================================
+If the Makefile of the application, use a DPDK script or pkg-config to read
+the flags from a generated file, the integration is done only once.
+This guide explains the logic and how to implement it:
+        http://people.freedesktop.org/~dbn/pkg-config-guide.html
+
+f you don't need a framework, I think it's better to extract compilation
+flags with something like pkg-config.
+        http://freedesktop.org/wiki/Software/pkg-config
+
+
+
+
+
+
+
+
+
